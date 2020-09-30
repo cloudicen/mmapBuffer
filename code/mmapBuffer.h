@@ -66,8 +66,6 @@ private:
     int persistenceFileFd = 0;
     //mmap临时文件的基础文件名，新建的文件会在后面跟上编号（从0开始）
     std::string bufferFileBasePath = "";
-    //mmap临时文件的标识符列表
-    std::vector<int> buffersFd;
 
     /**
      * @brief 添加一个缓存块，会进行缓存块限制检查和缓存块初始化检查（即头部指针为空的情况）
@@ -77,14 +75,7 @@ private:
      * @param _insertCur 在该指针指向的缓存块后插入新缓存块
      * @return 操作成功返回true
      */
-    bool addBufferBlock(int _mmapFd, const std::string &_filePath, size_t _blockSize, mmapBlock *_insertCur);
-
-    /**
-     * @brief 删除一个缓存块，会同时删除被映射的文件
-     * @param index 要删除的缓存块的序号
-     * @return none
-     */
-    void removeBufferBlock(unsigned int index);
+    bool addBufferBlock(const std::string &_filePath, size_t _blockSize, mmapBlock *_insertCur);
 
     /**
      * @brief 删除一个缓存块，会同时删除被映射的文件
@@ -164,19 +155,14 @@ public:
         if (head != nullptr)
         {
             waitForBufferPersist();
-            head->prev->next = nullptr;
-            while (head->next != nullptr)
+            for (size_t i = 0; i < blockCount - 1; i++)
             {
-                head = head->next;
-                delete head->prev;
+                mmapBlock *next = head->next;
+                delete head;
+                head = next;
             }
             delete head;
             close(persistenceFileFd);
-            for (int i = 0; i < (int)buffersFd.size(); i++)
-            {
-                close(buffersFd.at(i));
-                remove((bufferFileBasePath + std::to_string(i)).c_str());
-            }
         }
     }
 

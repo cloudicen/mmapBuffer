@@ -37,6 +37,11 @@ size_t mmapBlock::append(const char *_data, size_t len)
     }
 }
 
+bool mmapBlock::isValid()
+{
+    return fd != -1 && data != nullptr;
+}
+
 size_t mmapBlock::getUsedSpace() const
 {
     return usedSpace;

@@ -62,24 +62,29 @@ public:
     };
 
     //block前驱指针
-    mmapBlock *prev = nullptr;
+    mmapBlock *prev;
     //block后继指针
-    mmapBlock *next = nullptr;
+    mmapBlock *next;
     //block状态
     status blockStatus = free;
 
     /**
      * @brief 内存映射缓存块构造函数
-     * @param _fd 作为内存映射缓存块的文件描述符
      * @param _filePath 对应文件路径
      * @param _blockSize 缓存块大小
      * @param _prev 缓存块前驱指针
      * @param _next 缓存块后继指针
      */
-    mmapBlock(int _fd, const std::string &_filePath, size_t _blockSize, mmapBlock *_prev = nullptr, mmapBlock *_next = nullptr) : fd(_fd), filePath(_filePath), blockSize(_blockSize), prev(_prev), next(_next)
+    mmapBlock(const std::string &_filePath, size_t _blockSize, mmapBlock *_prev = nullptr, mmapBlock *_next = nullptr) : filePath(_filePath), blockSize(_blockSize), prev(_prev), next(_next)
     {
-        MapRegion(fd, 0, data, blockSize);
-        assert(data != nullptr);
+        fd = open(filePath.c_str(), O_RDWR | O_CREAT | O_DIRECT, 0645);
+        if (fd > 0)
+        {
+            if (posix_fallocate(fd, 0, blockSize) == 0)
+            {
+                MapRegion(fd, 0, data, blockSize);
+            }
+        }
     };
 
     //删除复制构造函数
@@ -88,7 +93,7 @@ public:
     mmapBlock &operator=(const mmapBlock &) = delete;
 
     /**
-     * @brief 析构时只解除内存映射，不关闭和删除磁盘上的文件
+     * @brief 析构时解除内存映射，关闭和删除磁盘上对应的文件
      */
     ~mmapBlock()
     {
@@ -96,6 +101,8 @@ public:
         {
             UnMapRegion(data, blockSize);
         }
+        close(fd);
+        remove(filePath.c_str());
     }
 
     /**
@@ -105,6 +112,11 @@ public:
      * @return 返回成功写入的长度,缓存区满返回0
      */
     size_t append(const char *_data, size_t len);
+
+    /**
+     * @brief 检查block的有效性
+     */
+    bool isValid();
 
     /**
      * @brief 获取已用空间大小(byte)

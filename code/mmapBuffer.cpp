@@ -4,7 +4,7 @@ std::mutex mmapBuffer::instenceMapMutex;
 
 std::map<std::string, std::unique_ptr<mmapBuffer>> mmapBuffer::bufferInstances;
 
-bool mmapBuffer::addBufferBlock(int _mmapFd, const std::string &_filePath, size_t _blockSize, mmapBlock *_insertCur)
+bool mmapBuffer::addBufferBlock(const std::string &_filePath, size_t _blockSize, mmapBlock *_insertCur)
 {
     //该函数只会被成员函数调用，使用递归锁来保护
     std::lock_guard<std::recursive_mutex> bufferLock(recursive_bufferMutex);
@@ -13,59 +13,21 @@ bool mmapBuffer::addBufferBlock(int _mmapFd, const std::string &_filePath, size_
         //head = nullptr,初始化block
         if (head == nullptr)
         {
-            head = new mmapBlock(_mmapFd, _filePath, _blockSize, nullptr, nullptr);
+            head = new mmapBlock(_filePath, _blockSize, nullptr, nullptr);
             head->prev = head;
             head->next = head;
         }
         else
         {
-            _insertCur->next = new mmapBlock(_mmapFd, _filePath, _blockSize, _insertCur, _insertCur->next->next);
+            _insertCur->next = new mmapBlock(_filePath, _blockSize, _insertCur, _insertCur->next);
         }
         blockCount++;
-        buffersFd.push_back(_mmapFd);
         return true;
     }
     else
     {
         return false;
     }
-}
-
-void mmapBuffer::removeBufferBlock(unsigned int index)
-{
-    //该函数只会被成员函数调用，使用递归锁来保护
-    std::lock_guard<std::recursive_mutex> bufferLock(recursive_bufferMutex);
-    if (unlikely(index == 0))
-    {
-        mmapBlock *_head = head;
-        head = head->next;
-        _head->prev->next = head;
-        delete _head;
-    }
-    else if (likely(index == blockCount - 1))
-    {
-        head->prev->prev->next = head;
-        delete head->prev;
-        close(buffersFd[index]);
-        buffersFd.pop_back();
-        remove(bufferFileBasePath.append(std::to_string(blockCount - 1)).c_str());
-    }
-    else
-    {
-        unsigned int i = 0;
-        mmapBlock *cursor = head;
-        while (i != index)
-        {
-            i++;
-            cursor = cursor->next;
-        }
-        cursor->prev->next = cursor->next;
-        delete cursor;
-    }
-    close(buffersFd[index]);
-    buffersFd.erase(buffersFd.begin() + index);
-    remove(bufferFileBasePath.append(std::to_string(index)).c_str());
-    blockCount--;
 }
 
 void mmapBuffer::removeBufferBlock(mmapBlock *block)
@@ -105,10 +67,7 @@ void mmapBuffer::initBuffer(const std::string &_persistFilePath, const std::stri
     for (size_t i = 0; i < initBlockCount; i++)
     {
         std::string newFilePath = bufferFileBasePath + std::to_string(i);
-        int newBatchFd = (::open(newFilePath.c_str(), O_RDWR | O_CREAT | O_DIRECT, 0645));
-        assert(newBatchFd >= 0);
-        posix_fallocate(newBatchFd, 0, _blockSize);
-        addBufferBlock(newBatchFd, newFilePath, _blockSize, head);
+        addBufferBlock(newFilePath, _blockSize, head);
     }
 
     //初始化写入指针和持久化指针
@@ -260,9 +219,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose)
             if (blockCount + 1 <= maxBlockCount)
             {
                 std::string newFilePath = bufferFileBasePath + std::to_string(blockCount);
-                int newBatchFd = ::open(newFilePath.c_str(), O_RDWR | O_CREAT | O_DIRECT, 0645);
-                posix_fallocate(newBatchFd, 0, blockSize);
-                addBufferBlock(newBatchFd, newFilePath, blockSize, writeCur);
+                addBufferBlock(newFilePath, blockSize, writeCur);
                 writeCur = writeCur->next;
                 writeCur->append(data, len);
             }
