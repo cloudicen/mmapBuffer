@@ -1,9 +1,19 @@
+ver = debug
 CXX = g++
-CFLAGS = -std=c++17 -Wall -g -pthread -O2
+
+MACROS = 
+
+ifeq ($(ver), debug)
+CFLAGS = -std=c++17 -Wall -pthread -O0 -g
+MACROS += -D DEBUG
+else
+CFLAGS = -std=c++17 -Wall -pthread -O2 
+MACROS += -D NDEBUG
+endif
 
 TARGET = mmapBufferTest
 OBJS = ../code/*.cpp \
        mmapBufferTest.cpp
 
 all: $(OBJS)
-	$(CXX) $(CFLAGS) $(OBJS) -o $(TARGET)  
+	$(CXX) $(CFLAGS) $(OBJS) $(MACROS) -o $(TARGET)

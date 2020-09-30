@@ -10,7 +10,7 @@ bool mmapBuffer::addBufferBlock(int _mmapFd, const std::string &_filePath, size_
     std::lock_guard<std::recursive_mutex> bufferLock(recursive_bufferMutex);
     if (blockCount + 1 <= maxBlockCount)
     {
-        //初始化block
+        //head = nullptr,初始化block
         if (head == nullptr)
         {
             head = new mmapBlock(_mmapFd, _filePath, _blockSize, nullptr, nullptr);
@@ -68,21 +68,23 @@ void mmapBuffer::removeBufferBlock(unsigned int index)
     blockCount--;
 }
 
-void removeBufferBlock(mmapBlock *block)
+void mmapBuffer::removeBufferBlock(mmapBlock *block)
 {
+    //该函数只会被成员函数调用，使用递归锁来保护
+    std::lock_guard<std::recursive_mutex> bufferLock(recursive_bufferMutex);
     if (block != nullptr)
     {
         block->prev->next = block->next;
         close(block->getFd());
         remove(block->getFilePath().c_str());
         delete block;
+        blockCount--;
     }
 }
 
 void mmapBuffer::initBuffer(const std::string &_persistFilePath, const std::string &_batchFileBasePath, size_t _maxBlockCount, size_t _blockCount, size_t _blockSize, unsigned int _persistTimeOut, unsigned int _systemPageSize)
 {
     //全局只初始化buffer一次，之后可通过其他方法更改相关配置参数
-    //std::call_once(bufferInstances.at(bufferName).second, [&] {
     if (initFlag.test_and_set())
     {
         return;
@@ -116,7 +118,6 @@ void mmapBuffer::initBuffer(const std::string &_persistFilePath, const std::stri
     std::thread persistWorkThread([&] { mmapBuffer::getBufferInstance(bufferName)->persist(); });
     //持久化线程转为后台线程，这里使用detach。当主线程终止，后台线程也会进入终止态并立即被销毁。
     persistWorkThread.detach();
-    //});
 }
 
 void mmapBuffer::persist()
@@ -132,7 +133,7 @@ void mmapBuffer::persist()
         if (persistenceCur->blockStatus == mmapBlock::status::free)
         {
             //当持久化区块未满时，写入指针和持久化指针应该指向同一个区块
-            //assert(writeCur == persistenceCur);
+            assert(writeCur == persistenceCur);
 
             //线程等待缓存区满，若等待超时，则进一步判断强制写入标志位
             blockIsFull.wait_for(lock, std::chrono_literals::operator""ms(persistenceTimeOut), [&] { return persistenceCur->blockStatus == mmapBlock::status::full; });
@@ -191,7 +192,7 @@ void mmapBuffer::persist()
         if (unlikely(forceWrite && persistenceCur->getUsedSpace() != 0))
         {
             //只有当缓冲区未满的时候才有可能调用强制持久化，此时写指针和持久化指针应指向同一block
-
+            assert(writeCur == persistenceCur);
             persistenceCur->setFullFlag();
 
             size_t writeLen = 0;
@@ -200,11 +201,13 @@ void mmapBuffer::persist()
             //进行写入对齐，对齐到页面大小的整数倍
             writeLen = persistenceCur->getUsedPages(pageSize) * pageSize;
 
+            //释放缓冲区锁，让写入线程可以在持久化过程中继续向缓冲区写入
             lock.unlock();
 
             //持久化数据
             persistenceCur->writeOut(persistenceFileFd, persistenceFileOffset, writeLen);
 
+            //上锁，持久化完成之后需要对缓冲区的成员变量进行修改
             lock.lock();
 
             //更新持久化文件长度,这里不计入写入对齐时候的补足长度
