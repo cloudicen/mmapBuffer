@@ -51,7 +51,6 @@ private:
     */
     void UnMapRegion(char *base, size_t map_size);
 
-public:
     /**
      * @brief 表示block的状态
      */
@@ -61,12 +60,14 @@ public:
         full
     };
 
+    //block状态
+    status blockStatus = free;
+
+public:
     //block前驱指针
     mmapBlock *prev;
     //block后继指针
     mmapBlock *next;
-    //block状态
-    status blockStatus = free;
 
     /**
      * @brief 内存映射缓存块构造函数
@@ -156,9 +157,19 @@ public:
     void clear();
 
     /**
+     * @brief 设置block状态标志为free
+     */
+    void mmapBlock::setFreeFlag();
+
+    /**
      * @brief 设置block状态标志为full
      */
     void setFullFlag();
+
+    /**
+     * @brief 检查block状态标志是否为full
+     */
+    bool testFullFlag();
 
     /**
      * @brief 将block数据写入文件

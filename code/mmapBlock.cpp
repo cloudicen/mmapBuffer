@@ -78,9 +78,19 @@ void mmapBlock::clear()
     blockStatus = free;
 }
 
+void mmapBlock::setFreeFlag()
+{
+    blockStatus = free;
+}
+
 void mmapBlock::setFullFlag()
 {
     blockStatus = full;
+}
+
+bool mmapBlock::testFullFlag()
+{
+    return blockStatus == full;
 }
 
 size_t mmapBlock::writeOut(int fd, size_t offset, size_t len)

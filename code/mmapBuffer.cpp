@@ -109,13 +109,13 @@ void mmapBuffer::persist()
         //涉及条件变量，使用互斥锁保护
         std::unique_lock<std::mutex> lock(bufferMutex);
 
-        if (persistenceCur->blockStatus == mmapBlock::status::free)
+        if (!persistenceCur->testFullFlag())
         {
             //当持久化区块未满时，写入指针和持久化指针应该指向同一个区块
             assert(writeCur == persistenceCur);
 
             //线程等待缓存区满，若等待超时，则进一步判断强制写入标志位
-            blockIsFull.wait_for(lock, std::chrono_literals::operator""ms(persistenceWaitTimeOut), [&] { return persistenceCur->blockStatus == mmapBlock::status::full; });
+            blockIsFull.wait_for(lock, std::chrono_literals::operator""ms(persistenceWaitTimeOut), [&] { return persistenceCur->testFullFlag(); });
         }
 
         //整个缓冲区为空，直接返回
@@ -131,7 +131,7 @@ void mmapBuffer::persist()
 
         //若缓存区满，则开始持久化
         //若缓存区未满而执行强制持久化在mmap情景下效率降低，因为缓存不会因为程序崩溃而丢失，所以大可以等到缓存区块满了再进行持久化
-        if (persistenceCur->blockStatus == mmapBlock::status::full)
+        if (persistenceCur->testFullFlag())
         {
             size_t writeLen = 0;
             size_t actualLen = persistenceCur->getUsedSpace();
@@ -244,7 +244,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose)
     {
         //下一个block为free，转移到下一个block
         writeCur->setFullFlag();
-        if (writeCur->next->blockStatus == mmapBlock::status::free)
+        if (writeCur->next->testFullFlag())
         {
             writeCur = writeCur->next;
             writeCur->append(data, len);
