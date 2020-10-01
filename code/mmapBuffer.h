@@ -23,21 +23,21 @@ private:
     //整体buffer的互斥锁
     std::mutex bufferMutex;
 
-    //buffer block 已满的条件变量
-    std::condition_variable blockIsFull;
-    //buffer block 持久化完成的条件变量
-    std::condition_variable blockPersistDone;
-    //整体buffer空的条件变量
-    std::condition_variable bufferIsEmpty;
-    //变更持久化文件完成的条件变量
-    std::condition_variable enableWriteFlagChanged;
-
     //强制持久化标志位
     bool forcePersist = false;
     //整体buffer为空标志位
     bool bufferEmpty = false;
     //允许写入标志位
     bool enableWrite = true;
+
+    //buffer block 已满的条件变量
+    std::condition_variable blockIsFull;
+    //buffer block 持久化完成的条件变量
+    std::condition_variable blockPersistenceDone;
+    //整体buffer空的条件变量
+    std::condition_variable bufferIsEmpty;
+    //允许写入标志位发生变更的条件变量
+    std::condition_variable enableWriteFlagChanged;
 
     //缓存块头部指针
     mmapBlock *head = nullptr;
@@ -53,7 +53,7 @@ private:
     //缓存块大小
     size_t blockSize = 0;
     //系统页面大小
-    size_t pageSize = 4096;
+    size_t systemPageSize = 4096;
 
     //持久化数据大小计数，在使用pwrite()的时候可以作为参数传入
     size_t persistenceFileOffset = 0;
@@ -62,7 +62,7 @@ private:
     size_t actualDataLen = 0;
 
     //持久化等待超时，即等待缓冲区满的时间间隔
-    unsigned int persistenceTimeOut = 0;
+    unsigned int persistenceWaitTimeOut = 0;
 
     //持久化文件路径
     std::string persistenceFilePath = "";
