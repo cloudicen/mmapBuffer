@@ -2,7 +2,7 @@
 
 #define LOGS_PER_THREAD 1000000UL
 #define THREAD_COUNT 5
-#define LOG_SIZE 1000
+#define LOG_SIZE 5
 void writeToBuffer(char *data, size_t len, int index)
 {
     mmapBuffer::getBufferInstance(std::to_string(index))->initBuffer(std::string("data").append(std::to_string(index)), std::string("buffer").append(std::to_string(index)), 5, 3, 409600);

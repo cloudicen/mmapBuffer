@@ -29,11 +29,15 @@ private:
     std::condition_variable blockPersistDone;
     //整体buffer空的条件变量
     std::condition_variable bufferIsEmpty;
+    //变更持久化文件完成的条件变量
+    std::condition_variable enableWriteFlagChanged;
 
     //强制持久化标志位
-    bool forceWrite = false;
+    bool forcePersist = false;
     //整体buffer为空标志位
     bool bufferEmpty = false;
+    //允许写入标志位
+    bool enableWrite = true;
 
     //缓存块头部指针
     mmapBlock *head = nullptr;

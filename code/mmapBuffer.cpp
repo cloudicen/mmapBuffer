@@ -81,14 +81,22 @@ void mmapBuffer::initBuffer(const std::string &_persistFilePath, const std::stri
 
 void mmapBuffer::changePersistFile(const std::string &_persistenceFilePath)
 {
+    //等待当前缓冲区数据全部持久化
     waitForBufferPersist();
 
-    close(persistenceFileFd);
-    remove(persistenceFilePath.c_str());
-    persistenceFilePath = _persistenceFilePath;
+    std::unique_lock<std::mutex> lock(bufferMutex);
 
+    //关闭旧持久化文件
+    close(persistenceFileFd);
+
+    //打开新持久化文件
+    persistenceFilePath = _persistenceFilePath;
     persistenceFileFd = ::open(persistenceFilePath.c_str(), O_RDWR | O_CREAT | O_DIRECT, 0645);
     assert(persistenceFileFd >= 0);
+
+    //重置文件长度信息
+    persistenceFileOffset = 0;
+    actualDataLen = 0;
 }
 
 void mmapBuffer::persist()
@@ -160,7 +168,7 @@ void mmapBuffer::persist()
         }
 
         //检测强制持久化标志位
-        if (unlikely(forceWrite && persistenceCur->getUsedSpace() != 0))
+        if (unlikely(forcePersist && persistenceCur->getUsedSpace() != 0))
         {
             //只有当缓冲区未满的时候才有可能调用强制持久化，此时写指针和持久化指针应指向同一block
             assert(writeCur == persistenceCur);
@@ -189,7 +197,7 @@ void mmapBuffer::persist()
             persistenceCur->clear();
 
             //重置强制持久化标志位
-            forceWrite = false;
+            forcePersist = false;
 
             //发送持久化完成信号
             blockPersistDone.notify_all();
@@ -201,16 +209,32 @@ void mmapBuffer::waitForBufferPersist()
 {
     //获取整体的缓存锁，涉及条件变量，使用互斥锁保护
     std::unique_lock<std::mutex> lock(bufferMutex);
+    //设置缓存不可写
+    enableWrite = false;
     //设定强制写入标志位
-    forceWrite = true;
+    forcePersist = true;
     //等待持久化完成
     bufferIsEmpty.wait(lock, [&] { return bufferEmpty; });
+    //恢复缓存可写
+    enableWrite = true;
+    lock.unlock();
+    enableWriteFlagChanged.notify_all();
 }
 
 bool mmapBuffer::try_append(char *data, size_t len, bool noLose)
 {
     //获取整体的缓存锁，使用了条件变量，故应该使用互斥锁
     std::unique_lock<std::mutex> lock(bufferMutex);
+    if (noLose)
+    {
+        //nolose模式下，等待缓存可写
+        enableWriteFlagChanged.wait(lock, [&] { return enableWrite; });
+    }
+    else if (!enableWrite)
+    {
+        //否则丢弃日志
+        return false;
+    }
 
     //存在写入动作，设置缓冲区空标志位为false
     bufferEmpty = false;
