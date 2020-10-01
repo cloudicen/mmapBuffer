@@ -79,6 +79,18 @@ void mmapBuffer::initBuffer(const std::string &_persistFilePath, const std::stri
     persistWorkThread.detach();
 }
 
+void mmapBuffer::changePersistFile(const std::string &_persistenceFilePath)
+{
+    waitForBufferPersist();
+
+    close(persistenceFileFd);
+    remove(persistenceFilePath.c_str());
+    persistenceFilePath = _persistenceFilePath;
+
+    persistenceFileFd = ::open(persistenceFilePath.c_str(), O_RDWR | O_CREAT | O_DIRECT, 0645);
+    assert(persistenceFileFd >= 0);
+}
+
 void mmapBuffer::persist()
 {
     using namespace std::chrono_literals;

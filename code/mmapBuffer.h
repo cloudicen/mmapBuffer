@@ -140,7 +140,7 @@ public:
      * @brief 更改持久化写入文件
      * @param _persistenceFilePath 新文件的路径
      */
-    void changePersistFile(const std::string &_persistenceFilePath){};
+    void changePersistFile(const std::string &_persistenceFilePath);
 
     /**
      * @brief 阻塞等待缓冲区的所有内容被持久化到硬盘
