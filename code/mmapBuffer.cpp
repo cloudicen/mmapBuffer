@@ -232,7 +232,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose)
     }
     else if (!enableWrite)
     {
-        //否则丢弃日志
+        //否则丢弃数据
         return false;
     }
 
@@ -261,7 +261,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose)
             }
             else
             {
-                //no lose模式开启，不会丢弃日志，而是等待
+                //no lose模式开启，不会丢弃数据，而是等待
                 if (noLose)
                 {
                     //等待缓存持久化，这里满足下一个缓存块有空间可写或者当前缓存块有空间可写就行
@@ -277,7 +277,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose)
                 }
                 else
                 {
-                    //丢弃日志
+                    //丢弃数据
                     return false;
                 }
             }
