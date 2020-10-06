@@ -140,7 +140,7 @@ void mmapBuffer::persist()
             size_t actualLen = persistenceCur->getUsedSpace();
 
             //进行写入对齐，对齐到页面大小的整数倍
-            writeLen = persistenceCur->getUsedPages(systemPageSize) * systemPageSize;
+            writeLen = blockSize;
 
             //释放缓冲区锁，让写入线程可以在持久化过程中继续向缓冲区写入
             lock.unlock();

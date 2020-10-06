@@ -1,11 +1,10 @@
 #include "../code/mmapBuffer.h"
 
 #define LOGS_PER_THREAD 10000000UL
-#define THREAD_COUNT 5
+#define THREAD_COUNT 4
 #define LOG_SIZE 100
 void writeToBuffer(char *data, size_t len, int index)
 {
-    mmapBuffer::getBufferInstance("TEST")->initBuffer(std::string("data"), std::string("buffer"), 7, 3, 409600000);
     auto ins = mmapBuffer::getBufferInstance("TEST");
     for (auto i = 0UL; i < LOGS_PER_THREAD; i++)
     {
@@ -17,7 +16,7 @@ void writeToBuffer(char *data, size_t len, int index)
 int main()
 {
     static char data[LOG_SIZE] = {'t', 'e', 's', 't', '\n'};
-    //mmapBuffer::getBufferInstance("TEST")->initBuffer(std::string("data"), std::string("buffer"), 7, 3, 409600000);
+    mmapBuffer::getBufferInstance("TEST")->initBuffer();
     auto start = std::chrono::steady_clock::now();
     std::vector<std::thread> threads;
     for (int i = 0; i < THREAD_COUNT; i++)

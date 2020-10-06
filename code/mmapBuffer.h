@@ -138,7 +138,7 @@ public:
      * @param _systemPageSize 系统页面大小(bytes)默认4k
      * @return none
      */
-    void initBuffer(const std::string &_persistenceFilePath = std::string("data"), const std::string &_bufferFileBasePath = std::string("buffer"), size_t _maxBlockCount = 7, size_t _blockCount = 3, size_t _blockSize = 4096 * 100000, unsigned int _persistenceTimeOut = 10, unsigned int _systemPageSize = 4096);
+    void initBuffer(const std::string &_persistenceFilePath = std::string("data"), const std::string &_bufferFileBasePath = std::string("buffer"), size_t _maxBlockCount = 70, size_t _blockCount = 2, size_t _blockSize = 4096 * 10000, unsigned int _persistenceTimeOut = 1, unsigned int _systemPageSize = 4096);
 
     /**
      * @brief 更改持久化写入文件
