@@ -10,10 +10,10 @@ private:
     static std::mutex instenceMapMutex;
 
     //全局buffer实例Map
-    static std::map<std::string, std::unique_ptr<mmapBuffer>> bufferInstances;
+    static std::unordered_map<std::string, std::shared_ptr<mmapBuffer>> bufferInstances;
 
     //实例初始化标志位
-    std::atomic_flag initFlag = ATOMIC_FLAG_INIT;
+    bool initFlag = false;
 
     //buffer的标识名称
     std::string bufferName;
@@ -109,10 +109,10 @@ public:
      * @param _bufferName 缓存实例的名称
      * @return 缓存实例指针
      */
-    static std::unique_ptr<mmapBuffer> &getBufferInstance(const std::string &_bufferName)
+    static std::shared_ptr<mmapBuffer> &getBufferInstance(const std::string &_bufferName)
     {
         std::unique_lock<std::mutex> lock(instenceMapMutex);
-        const auto [ins, success] = bufferInstances.try_emplace(_bufferName, std::unique_ptr<mmapBuffer>(new mmapBuffer));
+        const auto [ins, success] = bufferInstances.try_emplace(_bufferName, std::shared_ptr<mmapBuffer>(new mmapBuffer));
         ins->second->bufferName = _bufferName;
         return ins->second;
     };

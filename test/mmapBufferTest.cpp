@@ -1,14 +1,15 @@
 #include "../code/mmapBuffer.h"
 
-#define LOGS_PER_THREAD 1000000UL
+#define LOGS_PER_THREAD 10000000UL
 #define THREAD_COUNT 5
-#define LOG_SIZE 5
+#define LOG_SIZE 100
 void writeToBuffer(char *data, size_t len, int index)
 {
-    mmapBuffer::getBufferInstance(std::to_string(index))->initBuffer(std::string("data").append(std::to_string(index)), std::string("buffer").append(std::to_string(index)), 5, 3, 409600);
+    mmapBuffer::getBufferInstance("TEST")->initBuffer(std::string("data"), std::string("buffer"), 7, 3, 409600000);
+    auto ins = mmapBuffer::getBufferInstance("TEST");
     for (auto i = 0UL; i < LOGS_PER_THREAD; i++)
     {
-        mmapBuffer::getBufferInstance(std::to_string(index))->try_append(data, len, true);
+        ins->try_append(data, len, true);
     }
     std::cout << "worker : " << index << "finished!\n";
 }
@@ -16,6 +17,7 @@ void writeToBuffer(char *data, size_t len, int index)
 int main()
 {
     static char data[LOG_SIZE] = {'t', 'e', 's', 't', '\n'};
+    //mmapBuffer::getBufferInstance("TEST")->initBuffer(std::string("data"), std::string("buffer"), 7, 3, 409600000);
     auto start = std::chrono::steady_clock::now();
     std::vector<std::thread> threads;
     for (int i = 0; i < THREAD_COUNT; i++)
@@ -27,9 +29,9 @@ int main()
     {
         threads[i].join();
     }
-    for (int i = 0; i < THREAD_COUNT; i++)
+    //for (int i = 0; i < THREAD_COUNT; i++)
     {
-        mmapBuffer::getBufferInstance(std::to_string(i))->waitForBufferPersist();
+        mmapBuffer::getBufferInstance("TEST")->waitForBufferPersist();
     }
 
     auto end = std::chrono::steady_clock::now();
@@ -38,9 +40,12 @@ int main()
     std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
     std::cout << "totoal logs : " << LOGS_PER_THREAD * THREAD_COUNT << "\n";
     std::cout << "log data size: " << LOGS_PER_THREAD * THREAD_COUNT * LOG_SIZE << " bytes\n";
+    std::cout << "actual data write size: " << mmapBuffer::getBufferInstance("TEST")->getActualDataLen() << " bytes\n";
+    std::cout << "actual file size: " << mmapBuffer::getBufferInstance("TEST")->getPersistenceFileLen() << " bytes\n";
+    /*
     for (int i = 0; i < THREAD_COUNT; i++)
     {
         std::cout << "worker " << i << ", actual data write size: " << mmapBuffer::getBufferInstance(std::to_string(i))->getActualDataLen() << " bytes\n";
         std::cout << "worker " << i << ",actual file size: " << mmapBuffer::getBufferInstance(std::to_string(i))->getPersistenceFileLen() << " bytes\n";
-    }
+    }*/
 }

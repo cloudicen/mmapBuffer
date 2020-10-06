@@ -2,7 +2,7 @@
 
 std::mutex mmapBuffer::instenceMapMutex;
 
-std::map<std::string, std::unique_ptr<mmapBuffer>> mmapBuffer::bufferInstances;
+std::unordered_map<std::string, std::shared_ptr<mmapBuffer>> mmapBuffer::bufferInstances;
 
 bool mmapBuffer::addBufferBlock(const std::string &_filePath, size_t _blockSize, mmapBlock *_insertCur)
 {
@@ -46,11 +46,14 @@ void mmapBuffer::removeBufferBlock(mmapBlock *block)
 
 void mmapBuffer::initBuffer(const std::string &_persistenceFilePath, const std::string &_bufferFileBasePath, size_t _maxBlockCount, size_t _blockCount, size_t _blockSize, unsigned int _persistenceWaitTimeOut, unsigned int _systemPageSize)
 {
+    std::unique_lock<std::mutex> lk(bufferMutex);
     //全局只初始化buffer一次，之后可通过其他方法更改相关配置参数
-    if (initFlag.test_and_set())
+    if (initFlag)
     {
         return;
     }
+    initFlag = true;
+
     persistenceFilePath = _persistenceFilePath;
     bufferFileBasePath = _bufferFileBasePath;
     maxBlockCount = _maxBlockCount;
@@ -244,7 +247,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose)
     {
         //下一个block为free，转移到下一个block
         writeCur->setFullFlag();
-        if (writeCur->next->testFullFlag())
+        if (!writeCur->next->testFullFlag())
         {
             writeCur = writeCur->next;
             writeCur->append(data, len);

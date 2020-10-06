@@ -159,7 +159,7 @@ public:
     /**
      * @brief 设置block状态标志为free
      */
-    void mmapBlock::setFreeFlag();
+    void setFreeFlag();
 
     /**
      * @brief 设置block状态标志为full
