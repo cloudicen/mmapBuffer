@@ -85,6 +85,8 @@ void mmapBlock::setFreeFlag()
 
 void mmapBlock::setFullFlag()
 {
+    //往剩余空间填充空格
+    memset(data + usedSpace, ' ', getFreeSpace());
     blockStatus = full;
 }
 

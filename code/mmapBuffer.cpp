@@ -243,7 +243,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose)
     bufferEmpty = false;
 
     //写入缓存块，如果写入长度不符，则说明缓存块已满
-    if (writeCur->append(data, len) != len)
+    if (writeCur->append(data, len) == 0)
     {
         //下一个block为free，转移到下一个block
         writeCur->setFullFlag();

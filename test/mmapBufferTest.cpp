@@ -1,7 +1,7 @@
 #include "../code/mmapBuffer.h"
 
 #define LOGS_PER_THREAD 10000000UL
-#define THREAD_COUNT 4
+#define THREAD_COUNT 5
 #define LOG_SIZE 100
 void writeToBuffer(char *data, size_t len, int index)
 {
