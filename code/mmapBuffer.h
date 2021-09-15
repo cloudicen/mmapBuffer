@@ -1,6 +1,7 @@
 #ifndef __MMAPBUFFER__
 #define __MMAPBUFFER__
 #include "mmapBlock.h"
+#include <unordered_map>
 #include <map>
 
 class mmapBuffer
@@ -112,7 +113,7 @@ public:
     static std::shared_ptr<mmapBuffer> &getBufferInstance(const std::string &_bufferName)
     {
         std::unique_lock<std::mutex> lock(instenceMapMutex);
-        const auto [ins, success] = bufferInstances.try_emplace(_bufferName, std::shared_ptr<mmapBuffer>(new mmapBuffer));
+        const auto [ins, success] = bufferInstances.emplace(_bufferName, std::shared_ptr<mmapBuffer>(new mmapBuffer));
         ins->second->bufferName = _bufferName;
         return ins->second;
     };
@@ -138,7 +139,7 @@ public:
      * @param _systemPageSize 系统页面大小(bytes)默认4k
      * @return none
      */
-    void initBuffer(const std::string &_persistenceFilePath = std::string("data"), const std::string &_bufferFileBasePath = std::string("buffer"), size_t _maxBlockCount = 70, size_t _blockCount = 2, size_t _blockSize = 4096 * 10000, unsigned int _persistenceTimeOut = 1, unsigned int _systemPageSize = 4096);
+    void initBuffer(const std::string &_persistenceFilePath = std::string("data"), const std::string &_bufferFileBasePath = std::string("buffer"), size_t _maxBlockCount = 999, size_t _blockCount = 2, size_t _blockSize = 4096 * 100000, unsigned int _persistenceTimeOut = 1, unsigned int _systemPageSize = 4096);
 
     /**
      * @brief 更改持久化写入文件
