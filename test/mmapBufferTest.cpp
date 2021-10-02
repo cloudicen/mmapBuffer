@@ -7,8 +7,8 @@
 #include <thread>
 #include <vector>
 
-#define LOGS_PER_THREAD 100000000UL
-#define THREAD_COUNT 1
+#define LOGS_PER_THREAD 10000000UL
+#define THREAD_COUNT 5
 #define LOG_SIZE 100
 
 time_t rawtime;
