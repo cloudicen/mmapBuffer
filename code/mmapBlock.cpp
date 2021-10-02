@@ -32,7 +32,6 @@ std::pair<size_t, bool> mmapBlock::append(const char *_data, size_t len) {
     wirteLen = blockSize - usedSpace.load();
     usedSpace.store(blockSize);
     isFull = true;
-    fullFlag.test_and_set();
     blockSpinLock.clear();
   } else {
     writePos = usedSpace.fetch_add(len);
@@ -60,14 +59,7 @@ size_t mmapBlock::getFreeSpace() const { return blockSize - usedSpace.load(); }
 
 bool mmapBlock::isEmpty() const { return 0 == usedSpace.load(); }
 
-void mmapBlock::clear() {
-  usedSpace.store(0);
-  fullFlag.clear();
-}
-
-void mmapBlock::setFreeFlag() { fullFlag.clear(); }
-
-void mmapBlock::setFullFlag() { fullFlag.test_and_set(); }
+void mmapBlock::clear() { usedSpace.store(0); }
 
 size_t mmapBlock::writeOut(int fd, size_t offset, size_t len) {
   assert(fd);
@@ -76,6 +68,5 @@ size_t mmapBlock::writeOut(int fd, size_t offset, size_t len) {
     len = blockSize;
   }
   size_t writeLen = pwrite64(fd, data, len, offset);
-  // size_t writeLen = write(fd, data, len);
   return writeLen;
 }

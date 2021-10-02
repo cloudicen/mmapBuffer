@@ -23,20 +23,6 @@
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
 class mmapBlock {
-private:
-  // block的数据块头指针
-  char *data = nullptr;
-  // block对应的文件描述符
-  int fd = -1;
-  // block对应的文件路径
-  std::string filePath;
-  // block大小
-  size_t blockSize = 0;
-  // block被使用的空间
-  std::atomic_uint64_t usedSpace = 0;
-  std::atomic_flag fullFlag = ATOMIC_FLAG_INIT;
-  std::atomic_flag blockSpinLock = ATOMIC_FLAG_INIT;
-  std::shared_mutex mtx_writeOut;
   /**
    * @brief 执行内存映射
    * @param fd 被映射的文件描述符
@@ -52,14 +38,6 @@ private:
    * @param map_size 映射大小
    */
   void UnMapRegion(char *base, size_t map_size);
-
-  /**
-   * @brief 表示block的状态
-   */
-  enum status { free, full };
-
-  // block状态
-  status blockStatus = free;
 
 public:
   // block前驱指针
@@ -152,21 +130,6 @@ public:
   void clear();
 
   /**
-   * @brief 设置block状态标志为free
-   */
-  void setFreeFlag();
-
-  /**
-   * @brief 设置block状态标志为full
-   */
-  void setFullFlag();
-
-  /**
-   * @brief 检查block状态标志是否为full
-   */
-  bool testFullFlag();
-
-  /**
    * @brief 将block数据写入文件
    * @param fd 写入文件的描述符
    * @param offset 写入偏移量
@@ -174,6 +137,18 @@ public:
    * @return 返回成功写入的长度
    */
   size_t writeOut(int fd, size_t offset = 0, size_t len = 0);
+
+private:
+  char *data = nullptr; // block的数据块头指针
+  int fd = -1;          // block对应的文件描述符
+  std::string filePath; // block对应的文件路径
+
+  size_t blockSize = 0; // block大小
+
+  std::atomic_uint64_t usedSpace = 0;                // block被使用的空间
+  std::atomic_flag fullFlag = ATOMIC_FLAG_INIT;      // block被使用的空间
+  std::atomic_flag blockSpinLock = ATOMIC_FLAG_INIT; // 用于实现block的自旋锁
+  std::shared_mutex mtx_writeOut;                    //控制缓冲区刷新
 };
 
 #endif
