@@ -7,8 +7,6 @@ std::unordered_map<std::string, std::shared_ptr<mmapBuffer>>
 
 bool mmapBuffer::addBufferBlock(const std::string &_filePath, size_t _blockSize,
                                 mmapBlock *_insertCur) {
-  //该函数只会被成员函数调用，使用递归锁来保护
-  std::lock_guard<std::recursive_mutex> bufferLock(recursive_bufferMutex);
   if (blockCount + 1 <= maxBlockCount) {
     // head = nullptr,初始化block
     if (head == nullptr) {
@@ -27,8 +25,6 @@ bool mmapBuffer::addBufferBlock(const std::string &_filePath, size_t _blockSize,
 }
 
 void mmapBuffer::removeBufferBlock(mmapBlock *block) {
-  //该函数只会被成员函数调用，使用递归锁来保护
-  std::lock_guard<std::recursive_mutex> bufferLock(recursive_bufferMutex);
   if (block != nullptr) {
     block->prev->next = block->next;
     close(block->getFd());
@@ -158,15 +154,14 @@ void mmapBuffer::persist() {
 
       lock.unlock();
       //发送持久化完成信号
-      blockPersistenceDone.notify_one();
+      blockPersistenceDone.notify_all();
       continue;
     }
 
     //检测强制持久化标志位
-    if (unlikely(forcePersist && persistenceCur->getUsedSpace() != 0)) {
+    if (forcePersist && persistenceCur->getUsedSpace() != 0) {
       //只有当缓冲区未满的时候才有可能调用强制持久化，此时写指针和持久化指针应指向同一block
       assert(writeCur == persistenceCur);
-      persistenceCur->setFullFlag();
 
       printf("force persist\n");
 
@@ -191,7 +186,7 @@ void mmapBuffer::persist() {
       forcePersist = false;
 
       //发送持久化完成信号
-      blockPersistenceDone.notify_one();
+      blockPersistenceDone.notify_all();
     }
   }
 }
@@ -212,12 +207,6 @@ void mmapBuffer::waitForBufferPersist() {
 }
 
 bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
-  // //获取整体的缓存锁，使用了条件变量，故应该使用互斥锁
-  // std::unique_lock<std::mutex> lock(bufferMutex);
-
-  // //等待缓存可写
-  // enableWriteFlagChanged.wait(lock, [&] { return enableWrite; });
-
   // //存在写入动作，设置缓冲区空标志位为false
   bufferEmpty = false;
 

@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 
 class mmapBuffer {
@@ -25,8 +26,6 @@ private:
   // buffer的标识名称
   std::string bufferName;
 
-  //用于成员函数内部保护的递归锁
-  std::recursive_mutex recursive_bufferMutex;
   //整体buffer的互斥锁
   std::mutex bufferMutex;
 

@@ -4,7 +4,7 @@ void mmapBlock::MapRegion(int fd, uint64_t file_offset, char *&base,
                           size_t map_size) {
   void *ptr = mmap(nullptr, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
                    file_offset);
-  if (unlikely(ptr == MAP_FAILED)) {
+  if (ptr == MAP_FAILED) {
     base = nullptr;
     return;
   }

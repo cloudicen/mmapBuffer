@@ -2,25 +2,13 @@
 #define __MMAPBLOCK__
 #include <assert.h>
 #include <atomic>
-#include <chrono>
 #include <condition_variable>
 #include <cstring>
-#include <fcntl.h>
-#include <functional>
-#include <iostream>
 #include <mutex>
 #include <shared_mutex>
-#include <string>
+#include <sys/fcntl.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <thread>
-#include <unistd.h>
-#include <vector>
-
-#define likely(x) __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
+#include <sys/unistd.h>
 
 class mmapBlock {
   /**
@@ -40,11 +28,6 @@ class mmapBlock {
   void UnMapRegion(char *base, size_t map_size);
 
 public:
-  // block前驱指针
-  mmapBlock *prev;
-  // block后继指针
-  mmapBlock *next;
-
   /**
    * @brief 内存映射缓存块构造函数
    * @param _filePath 对应文件路径
@@ -137,6 +120,10 @@ public:
    * @return 返回成功写入的长度
    */
   size_t writeOut(int fd, size_t offset = 0, size_t len = 0);
+
+public:
+  mmapBlock *prev; // block前驱指针
+  mmapBlock *next; // block后继指针
 
 private:
   char *data = nullptr; // block的数据块头指针
