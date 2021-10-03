@@ -1,7 +1,13 @@
 #ifndef __MMAPBUFFER__
 #define __MMAPBUFFER__
+
 #include "mmapBlock.h"
 #include <unordered_map>
+#include <mutex>
+#include <string>
+#include <atomic>
+#include <memory>
+#include <condition_variable>
 #include <map>
 
 class mmapBuffer

@@ -21,14 +21,14 @@ void mmapBlock::UnMapRegion(char *base, size_t map_size)
 
 size_t mmapBlock::append(const char *_data, size_t len)
 {
-    if (blockSize - usedSpace < len)
+    if (blockSize - usedSpace.load() < len)
     {
         return 0;
     }
     else
     {
-        memcpy(data + usedSpace, _data, len);
-        usedSpace += len;
+        auto writePos = usedSpace.fetch_add(len);
+        memcpy(data + writePos, _data, len);
         if (usedSpace == blockSize)
         {
             blockStatus = full;

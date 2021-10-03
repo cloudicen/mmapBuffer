@@ -33,7 +33,8 @@ private:
     //block大小
     size_t blockSize = 0;
     //block被使用的空间
-    size_t usedSpace = 0;
+    std::atomic_uint_least64_t usedSpace = 0;
+    std::atomic_flag fullFlag;
 
     /**
     * @brief 执行内存映射
