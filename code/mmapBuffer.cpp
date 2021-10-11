@@ -104,16 +104,6 @@ void mmapBuffer::persist() {
     //涉及条件变量，使用互斥锁保护
     std::unique_lock<std::mutex> lock(persistCur_mtx);
 
-    //整个缓冲区为空，直接返回
-    if (persistenceCur->isEmpty()) {
-      bufferEmpty = true;
-      lock.unlock();
-      //发送信号
-      bufferIsEmpty.notify_all();
-      blockPersistenceDone.notify_all();
-      continue;
-    }
-
     if (persistenceCur->getFreeSpace() > 0) {
       //当持久化区块未满时，写入指针和持久化指针应该指向同一个区块
       assert(writeCur == persistenceCur);
@@ -153,10 +143,8 @@ void mmapBuffer::persist() {
       //发送持久化完成信号
       blockPersistenceDone.notify_all();
       continue;
-    }
-
-    //检测强制持久化标志位
-    else if (forcePersist && persistenceCur->getUsedSpace() != 0) {
+    } else if (forcePersist &&
+               persistenceCur->getUsedSpace() != 0) { //检测强制持久化标志位
       //只有当缓冲区未满的时候才有可能调用强制持久化，此时写指针和持久化指针应指向同一block
       assert(writeCur == persistenceCur);
 
@@ -182,6 +170,13 @@ void mmapBuffer::persist() {
 
       //发送持久化完成信号
       blockPersistenceDone.notify_all();
+    } else if (persistenceCur->isEmpty()) {
+      bufferEmpty = true;
+      lock.unlock();
+      //发送信号
+      bufferIsEmpty.notify_all();
+      blockPersistenceDone.notify_all();
+      continue;
     }
   }
 }
