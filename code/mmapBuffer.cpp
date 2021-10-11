@@ -122,9 +122,6 @@ void mmapBuffer::persist() {
       blockIsFull.wait_for(
           lock, std::chrono_literals::operator""ms(persistenceWaitTimeOut),
           [&] { return persistenceCur->getFreeSpace() == 0; });
-      if (persistenceCur->getFreeSpace() == 0) {
-        printf("block is full\n");
-      }
     }
 
     //若缓存区满，则开始持久化
@@ -163,8 +160,6 @@ void mmapBuffer::persist() {
       //只有当缓冲区未满的时候才有可能调用强制持久化，此时写指针和持久化指针应指向同一block
       assert(writeCur == persistenceCur);
 
-      printf("force persist\n");
-
       size_t writeLen = 0;
       size_t actualLen = persistenceCur->getUsedSpace();
 
@@ -187,8 +182,6 @@ void mmapBuffer::persist() {
 
       //发送持久化完成信号
       blockPersistenceDone.notify_all();
-    } else {
-      printf("return waiting\n");
     }
   }
 }
@@ -216,7 +209,6 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
   auto [actualLen, isFull] = writeCur->append(data, len);
 
   if (actualLen == 0) {
-    printf("缓冲区已经是满的状态，需要等待指针调整\n");
     //缓冲区已经是满的状态，需要等待指针调整
     //这里的等待队列是使用notify_one唤醒的
     std::unique_lock<std::mutex> lock(writeCur_mtx);
@@ -228,7 +220,6 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
     try_append(data, len, noLose);
     writeCur_cv.notify_all(); //通知下一个正在等待的线程
   } else if (len != actualLen) {
-    printf("仅写入了部分数据，长度%ld,进行指针调整\n", actualLen);
     //仅写入了部分数据，进行指针调整
     std::unique_lock<std::mutex> lock(writeCur_mtx);
     int remainLen = len - actualLen;
@@ -238,12 +229,10 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
         auto [writeLen, isFull] = writeCur->append(data + dataPos, remainLen);
         if (writeLen == remainLen && !isFull) {
           //直接写入完成，并且当前缓冲区不满
-          printf("调整完成，且当前缓冲区不满\n");
           lock.unlock();
           writeCur_cv.notify_all(); //通知正在等待的线程
           return true;
         } else if (writeLen == remainLen && isFull) {
-          printf("调整完成，当前缓冲区已满\n");
           //直接写入完成，但当前缓冲区已满
           if (writeCur->next->isEmpty()) {
             writeCur = writeCur->next; //下一个缓冲区可用，直接移动指针
@@ -256,13 +245,13 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
             } else { //无法添加更多的缓冲区，需要等待
               std::unique_lock<std::mutex> persistLock(persistCur_mtx);
               blockPersistenceDone.wait(persistLock, [=]() {
-            return writeCur->next->isEmpty() || writeCur->isEmpty();
-          });
-          if (writeCur->isEmpty()) {
-            ;
-          } else {
-            writeCur = writeCur->next;
-          }
+                return writeCur->next->isEmpty() || writeCur->isEmpty();
+              });
+              if (writeCur->isEmpty()) {
+                ;
+              } else {
+                writeCur = writeCur->next;
+              }
               assert(writeCur->isEmpty());
             }
           }
@@ -271,20 +260,17 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
           writeCur_cv.notify_all(); //通知一个正在等待的线程
           return true;
         } else { //写入未完成，需要更新位置参数，继续写入
-          printf("调整未完成，当前缓冲区已满\n");
           remainLen = remainLen - writeLen;
           dataPos += writeLen;
           blockIsFull.notify_one();
           continue;
         }
       } else if (writeCur->next->isEmpty()) { //下一个缓冲区可用
-        printf("调整中，下一个缓冲区可用\n");
         writeCur = writeCur->next;
         assert(writeCur->isEmpty());
         continue;
       } else {
         if (blockCount + 1 <= maxBlockCount) { //可添加新缓冲区
-          printf("调整中，可添加新缓冲区\n");
           std::string newFilePath =
               bufferFileBasePath + std::to_string(blockCount);
           addBufferBlock(newFilePath, blockSize, writeCur);
@@ -292,7 +278,6 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
           assert(writeCur->isEmpty());
           continue;
         } else { //无法添加更多的缓冲区，需要等待
-          printf("调整中，无法添加更多的缓冲区，需要等待\n");
           std::unique_lock<std::mutex> persistLock(persistCur_mtx);
           blockPersistenceDone.wait(persistLock, [=]() {
             return writeCur->next->isEmpty() || writeCur->isEmpty();
@@ -308,7 +293,6 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
       }
     }
   } else if (len == actualLen && isFull) {
-    printf("无冲突正常写入,刚好把缓存区填满\n");
     //无冲突正常写入,刚好把缓存区填满
     std::unique_lock<std::mutex> lock(writeCur_mtx);
     if (writeCur->next->isEmpty()) { //下一个缓冲区可用
@@ -316,23 +300,13 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
       assert(writeCur->isEmpty());
     } else {
       if (blockCount + 1 <= maxBlockCount) { //可添加新缓冲区
-        printf("调整中，可添加新缓冲区\n");
         std::string newFilePath =
             bufferFileBasePath + std::to_string(blockCount);
         addBufferBlock(newFilePath, blockSize, writeCur);
         writeCur = writeCur->next;
         assert(writeCur->isEmpty());
       } else { //无法添加更多的缓冲区，需要等待
-        printf("调整中，无法添加更多的缓冲区(%d)，需要等待\n", blockCount);
         std::unique_lock<std::mutex> persistLock(persistCur_mtx);
-        // printf("write cur: %d \n",writeCur->getFd());
-        // printf("per cur: %d \n",persistenceCur->getFd());
-        // printf("buffer: %d \n",writeCur->getFd());
-        // auto cur = writeCur->next;
-        // while(cur != writeCur) {
-        //   printf("buffer: %d \n",cur->getFd());
-        //    cur = cur->next;
-        // }
 
         //可能出现等待的时候，持久化线程直接把所有缓存块全部持久化完毕，此时不能移动写指针。
         //出现这种情况就是单个缓存块设置过小

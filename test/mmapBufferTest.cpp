@@ -9,7 +9,7 @@
 
 #define LOGS_PER_THREAD 10000000UL
 #define THREAD_COUNT 5
-#define LOG_SIZE 100
+#define LOG_SIZE 103
 
 time_t rawtime;
 time_t last_sec;
