@@ -244,7 +244,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
               writeCur = writeCur->next;
             } else { //无法添加更多的缓冲区，需要等待
               std::unique_lock<std::mutex> persistLock(persistCur_mtx);
-              blockPersistenceDone.wait(persistLock, [=]() {
+              blockPersistenceDone.wait(persistLock, [this]() {
                 return writeCur->next->isEmpty() || writeCur->isEmpty();
               });
               if (writeCur->isEmpty()) {
@@ -279,7 +279,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
           continue;
         } else { //无法添加更多的缓冲区，需要等待
           std::unique_lock<std::mutex> persistLock(persistCur_mtx);
-          blockPersistenceDone.wait(persistLock, [=]() {
+          blockPersistenceDone.wait(persistLock, [this]() {
             return writeCur->next->isEmpty() || writeCur->isEmpty();
           });
           if (writeCur->isEmpty()) {
@@ -310,7 +310,7 @@ bool mmapBuffer::try_append(char *data, size_t len, bool noLose) {
 
         //可能出现等待的时候，持久化线程直接把所有缓存块全部持久化完毕，此时不能移动写指针。
         //出现这种情况就是单个缓存块设置过小
-        blockPersistenceDone.wait(persistLock, [=]() {
+        blockPersistenceDone.wait(persistLock, [this]() {
           return writeCur->next->isEmpty() || writeCur->isEmpty();
         });
         if (writeCur->isEmpty()) {
