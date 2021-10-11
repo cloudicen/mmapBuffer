@@ -155,8 +155,8 @@ public:
   void
   initBuffer(const std::string &_persistenceFilePath = std::string("data"),
              const std::string &_bufferFileBasePath = std::string("buffer"),
-             size_t _maxBlockCount = 999, size_t _blockCount = 2,
-             size_t _blockSize = 4096 * 1000,
+             size_t _maxBlockCount = 50, size_t _blockCount = 2,
+             size_t _blockSize = 4096 * 100000,
              unsigned int _persistenceTimeOut = 10,
              unsigned int _systemPageSize = 4096);
 
